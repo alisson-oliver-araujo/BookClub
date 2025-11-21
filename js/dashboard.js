@@ -224,14 +224,44 @@ async function loadBooks(params = "") {
 
 bookForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const id = document.getElementById("bookId").value;
+  const title = document.getElementById("bookTitle").value.trim();
+  const summary = document.getElementById("bookSummary").value.trim();
+  const genre = document.getElementById("bookGenre").value.trim();
+  const yearStr = (document.getElementById("bookYear").value || "").toString().trim();
+  const authorId = document.getElementById("bookAuthor").value || null;
+
+  // Validações
+  if (!title) {
+    showMsg("Título é obrigatório");
+    document.getElementById("bookTitle").focus();
+    return;
+  }
+
+  if (yearStr !== "") {
+    // apenas dígitos, sem sinal
+    if (!/^\d+$/.test(yearStr)) {
+      showMsg("Ano inválido. Use apenas números inteiros não-negativos.");
+      document.getElementById("bookYear").focus();
+      return;
+    }
+    const yearNum = Number(yearStr);
+    if (!Number.isFinite(yearNum) || yearNum <= 1) {
+      showMsg("Ano inválido. Deve ser > 1.");
+      document.getElementById("bookYear").focus();
+      return;
+    }
+  }
+
   const payload = {
-    title: document.getElementById("bookTitle").value.trim(),
-    summary: document.getElementById("bookSummary").value.trim(),
-    genre: document.getElementById("bookGenre").value.trim(),
-    published_year: Number(document.getElementById("bookYear").value) || null,
-    author_id: document.getElementById("bookAuthor").value || null
+    title,
+    summary,
+    genre,
+    published_year: yearStr === "" ? null : Number(yearStr),
+    author_id: authorId
   };
+
   try {
     if (id) {
       await updateRecord("books", id, payload);
@@ -243,8 +273,17 @@ bookForm.addEventListener("submit", async (e) => {
     bookForm.reset();
     bookFormWrapper.classList.add("hidden");
     loadBooks();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showMsg("Erro ao salvar livro");
+  }
+  // --- sanitize numeric input for published year (remove non-digits as user types)
+  const bookYearInput = document.getElementById("bookYear");
+  if (bookYearInput) {
+    bookYearInput.addEventListener("input", () => {
+      // remove tudo que não for dígito (impede sinais, letras, acentos)
+      bookYearInput.value = bookYearInput.value.replace(/[^\d]/g, "");
+    });
   }
 });
 
