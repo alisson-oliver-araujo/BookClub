@@ -7,7 +7,7 @@ Objetivo: frontend funcional, responsivo e esteticamente agradável que consome 
 - register.html — cadastro
 - dashboard.html — área autenticada com CRUD de autores e livros
 - config.example.js — exemplo de configuração do Supabase
-- js/ — scripts (auth.js, api.js, dashboard.js)
+- js/ — scripts (config.js, auth.js, api.js, dashboard.js)
 - images/ — ilustrações opcionais
 
 ## Requisitos no Supabase
@@ -28,6 +28,49 @@ Crie um projeto no Supabase e adicione duas tabelas mínimas: `authors` e `books
 - published_year: integer
 - author_id: uuid, foreign key references authors.id
 
+### Script para criação de tabelas
+```bash
+-- Habilita função para gerar UUIDs (gen_random_uuid)
+create extension if not exists "pgcrypto";
+
+-- Tabela authors
+create table if not exists public.authors (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  bio text,
+  country text,
+  birthdate date,
+  created_at timestamptz default now()
+);
+
+-- Tabela books
+create table if not exists public.books (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  summary text,
+  genre text,
+  published_year integer,
+  author_id uuid references public.authors(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+-- Exemplos de dados (opcionais)
+insert into public.authors (name, bio, country, birthdate)
+values
+  ('Clarice Lispector', 'Escritora brasileira, conhecida por prosa introspectiva.', 'Brasil', '1920-12-10'),
+  ('Gabriel García Márquez', 'Romancista colombiano, Nobel de Literatura.', 'Colômbia', '1927-03-06');
+
+insert into public.books (title, summary, genre, published_year, author_id)
+select 'A Paixão Segundo G. H.', 'Romance existencial e introspectivo.', 'Ficção', 1964, a.id
+from public.authors a where a.name ilike 'Clarice Lispector'
+limit 1;
+
+insert into public.books (title, summary, genre, published_year, author_id)
+select 'Cem Anos de Solidão', 'Saga da família Buendía em Macondo.', 'Realismo Mágico', 1967, a.id
+from public.authors a where a.name ilike 'Gabriel García Márquez'
+limit 1;
+
+```
 Observação: ative/desative Row Level Security (RLS) conforme sua necessidade de desenvolvimento. Para produção, configure políticas RLS para proteger dados.
 
 ## Configuração
@@ -55,4 +98,5 @@ Observação: ative/desative Row Level Security (RLS) conforme sua necessidade d
 
 ## Observações finais
 - A interface usa Tailwind via CDN para acelerar o desenvolvimento e garantir responsividade.
+
 - Ajuste estilos, paleta de cores e imagens em `dashboard.html`/CSS conforme preferência.
