@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BookClub — Cadastro</title>
+    <script type="module" defer src="./js/auth.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <main class="w-full max-w-md p-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <header class="mb-4 text-center">
+                <h1 class="text-2xl font-semibold text-indigo-600">Crie sua conta</h1>
+                <p class="text-sm text-slate-500 mt-1">Cadastro rápido para começar</p>
+            </header>
+
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-600">Nome completo</label>
+                    <input id="name" type="text"
+                        class="mt-1 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600">E-mail</label>
+                    <input id="email" type="email" required
+                        class="mt-1 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600">Senha</label>
+                    <input id="password" type="password" required minlength="6"
+                        class="mt-1 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Cadastrar</button>
+
+                <p class="text-sm text-center text-slate-500">
+                    Já tem conta?
+                    <a href="index.html" class="text-indigo-600 hover:underline">Entrar</a>
+                </p>
+
+                <p id="registerMsg" class="text-sm text-center text-rose-600 hidden"></p>
+            </form>
+        </div>
+    </main>
+</body>
+
+</html>

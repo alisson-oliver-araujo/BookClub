@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BookClub — Entrar</title>
+    <script type="module" defer src="./js/auth.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <main class="w-full max-w-md p-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <header class="mb-4 text-center">
+                <h1 class="text-2xl font-semibold text-indigo-600">BookClub</h1>
+                <p class="text-sm text-slate-500 mt-1">Faça login para acessar sua área</p>
+            </header>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-600">E-mail</label>
+                    <input id="email" type="email" required
+                        class="mt-1 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600">Senha</label>
+                    <input id="password" type="password" required
+                        class="mt-1 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Entrar</button>
+
+                <p class="text-sm text-center text-slate-500">
+                    Ainda não tem conta?
+                    <a href="register.html" class="text-indigo-600 hover:underline">Cadastre-se</a>
+                </p>
+
+                <p id="loginMsg" class="text-sm text-center text-rose-600 hidden"></p>
+            </form>
+        </div>
+    </main>
+</body>
+
+</html>
