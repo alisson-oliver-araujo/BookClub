@@ -1,15 +1,16 @@
-// js/dashboard.js
-import { signout, getAuthHeader } from "./auth.js";
+import { signout } from "./auth.js";
 import { fetchList, createRecord, updateRecord, deleteRecord } from "./api.js";
 
+// Botões e views
 const btnLogout = document.getElementById("btnLogout");
 const btnAuthors = document.getElementById("btnAuthors");
 const btnBooks = document.getElementById("btnBooks");
 const viewAuthors = document.getElementById("viewAuthors");
 const viewBooks = document.getElementById("viewBooks");
+const viewProfile = document.getElementById("viewProfile"); // existe no HTML
 const msgBox = document.getElementById("msg");
 
-// guard: redireciona se não logado
+// Guard: redireciona se não logado
 (function guard() {
   const token = localStorage.getItem("sb_token");
   if (!token && location.pathname.endsWith("dashboard.html")) {
@@ -17,15 +18,41 @@ const msgBox = document.getElementById("msg");
   }
 })();
 
+// Mensagens rápidas
 function showMsg(text, timeout = 2500) {
   msgBox.textContent = text;
   msgBox.classList.remove("hidden");
   setTimeout(() => msgBox.classList.add("hidden"), timeout);
 }
 
-// Navegação simples
-btnAuthors.addEventListener("click", () => { viewAuthors.classList.remove("hidden"); viewBooks.classList.add("hidden"); viewProfile.classList.add("hidden"); });
-btnBooks.addEventListener("click", () => { viewAuthors.classList.add("hidden"); viewBooks.classList.remove("hidden"); viewProfile.classList.add("hidden"); loadBooks(); });
+// Formata yyyy-mm-dd -> dd/mm/aaaa
+function formatDateBR(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR");
+}
+
+// Sanitizar input de ano (apenas dígitos)
+const bookYearInput = document.getElementById("bookYear");
+if (bookYearInput) {
+  bookYearInput.addEventListener("input", () => {
+    bookYearInput.value = bookYearInput.value.replace(/[^\d]/g, "");
+  });
+}
+
+// Navegação
+btnAuthors.addEventListener("click", () => {
+  viewAuthors.classList.remove("hidden");
+  viewBooks.classList.add("hidden");
+  viewProfile.classList.add("hidden");
+});
+btnBooks.addEventListener("click", () => {
+  viewAuthors.classList.add("hidden");
+  viewBooks.classList.remove("hidden");
+  viewProfile.classList.add("hidden");
+  loadBooks();
+});
 btnLogout.addEventListener("click", () => signout());
 
 // Autores
@@ -50,13 +77,14 @@ async function loadAuthors() {
   authorsList.innerHTML = "";
   const rows = await fetchList("authors", "?order=name.asc");
   if (!Array.isArray(rows)) return;
+
   rows.forEach(a => {
     const card = document.createElement("div");
     card.className = "bg-white p-4 rounded shadow flex justify-between items-start";
     card.innerHTML = `
       <div>
         <h4 class="font-semibold">${a.name}</h4>
-        <p class="text-sm text-slate-600">${a.country || ""} · ${a.birthdate || ""}</p>
+        <p class="text-sm text-slate-600">${a.country || ""} · ${formatDateBR(a.birthdate)}</p>
         <p class="text-sm mt-2 text-slate-700">${a.bio ? a.bio.slice(0, 120) + (a.bio.length > 120 ? "..." : "") : ""}</p>
       </div>
       <div class="flex flex-col gap-2">
@@ -68,7 +96,7 @@ async function loadAuthors() {
     authorsList.appendChild(card);
   });
 
-  // handlers
+  // Editar autor
   document.querySelectorAll(".editAuthor").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
@@ -85,17 +113,39 @@ async function loadAuthors() {
     });
   });
 
+  // Excluir autor
   document.querySelectorAll(".delAuthor").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
-      if (!confirm("Excluir autor? Esta ação também pode exigir exclusão prévia de livros relacionados.")) return;
-      await deleteRecord("authors", id);
-      showMsg("Autor excluído");
-      loadAuthors();
-      loadBooks();
+      if (typeof Swal === "undefined") {
+        // fallback caso SweetAlert2 não esteja carregado
+        if (!confirm("Excluir autor? Esta ação também pode exigir exclusão prévia de livros relacionados.")) return;
+        await deleteRecord("authors", id);
+        showMsg("Autor excluído");
+        loadAuthors();
+        loadBooks();
+        return;
+      }
+      Swal.fire({
+        title: "Tem certeza?",
+        text: "Excluir autor? Esta ação não poderá ser desfeita.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sim, excluir!"
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await deleteRecord("authors", id);
+          showMsg("Autor excluído");
+          loadAuthors();
+          loadBooks();
+        }
+      });
     });
   });
 
+  // Ver livros por autor
   document.querySelectorAll(".viewBooksByAuthor").forEach(btn => {
     btn.addEventListener("click", (e) => {
       const id = e.currentTarget.dataset.id;
@@ -108,13 +158,37 @@ async function loadAuthors() {
 
 authorForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const id = document.getElementById("authorId").value;
+  const name = document.getElementById("authorName").value.trim();
+  const bio = document.getElementById("authorBio").value.trim();
+  const country = document.getElementById("authorCountry").value.trim();
+  const birthdate = document.getElementById("authorBirthdate").value;
+
+  // Valida obrigatórios (além do nome, conforme pedido)
+  if (!name) {
+    showMsg("Nome é obrigatório.");
+    document.getElementById("authorName").focus();
+    return;
+  }
+  // Se quiser tornar país e nascimento obrigatórios, descomente:
+  if (!country) { showMsg("País é obrigatório."); document.getElementById("authorCountry").focus(); return; }
+  if (!birthdate) { showMsg("Nascimento é obrigatório."); document.getElementById("authorBirthdate").focus(); return; }
+
+  // Impede data futura
+  if (birthdate && new Date(birthdate) > new Date()) {
+    showMsg("Data de nascimento não pode ser futura.");
+    document.getElementById("authorBirthdate").focus();
+    return;
+  }
+
   const payload = {
-    name: document.getElementById("authorName").value.trim(),
-    bio: document.getElementById("authorBio").value.trim(),
-    country: document.getElementById("authorCountry").value.trim(),
-    birthdate: document.getElementById("authorBirthdate").value || null
+    name,
+    bio,
+    country,
+    birthdate: birthdate || null
   };
+
   try {
     if (id) {
       await updateRecord("authors", id, payload);
@@ -127,7 +201,8 @@ authorForm.addEventListener("submit", async (e) => {
     authorFormWrapper.classList.add("hidden");
     loadAuthors();
     loadBooks();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showMsg("Erro ao salvar autor");
   }
 });
@@ -166,13 +241,15 @@ async function populateAuthorSelect() {
 
 async function loadBooks(params = "") {
   booksList.innerHTML = "";
-  // select traz dados do author via relacionamento manual: select=*,authors(name)
-  // Supabase REST não resolve joins automáticos sem views; por isso vamos buscar livros e mapear autores localmente
   const books = await fetchList("books", params ? params : "?order=title.asc");
   const authors = await fetchList("authors", "?order=name.asc");
   const authorsMap = Array.isArray(authors) ? Object.fromEntries(authors.map(a => [a.id, a])) : {};
 
-  if (!Array.isArray(books)) return;
+  if (!Array.isArray(books) || books.length === 0) {
+    booksList.innerHTML = "<p class='text-slate-500'>Nenhum livro encontrado.</p>";
+    return;
+  }
+
   books.forEach(b => {
     const card = document.createElement("div");
     card.className = "bg-white p-4 rounded shadow flex justify-between items-start";
@@ -180,7 +257,7 @@ async function loadBooks(params = "") {
     card.innerHTML = `
       <div>
         <h4 class="font-semibold">${b.title}</h4>
-        <p class="text-sm text-slate-600">${authorName} · ${b.published_year || ""}</p>
+        <p class="text-sm text-slate-600">${authorName} · ${b.published_year ?? ""}</p>
         <p class="text-sm mt-2 text-slate-700">${b.summary ? b.summary.slice(0, 130) + (b.summary.length > 130 ? "..." : "") : ""}</p>
       </div>
       <div class="flex flex-col gap-2">
@@ -191,6 +268,7 @@ async function loadBooks(params = "") {
     booksList.appendChild(card);
   });
 
+  // Editar livro
   document.querySelectorAll(".editBook").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
@@ -211,17 +289,37 @@ async function loadBooks(params = "") {
     });
   });
 
+  // Excluir livro
   document.querySelectorAll(".delBook").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
-      if (!confirm("Excluir livro?")) return;
-      await deleteRecord("books", id);
-      showMsg("Livro excluído");
-      loadBooks();
+      if (typeof Swal === "undefined") {
+        if (!confirm("Excluir livro?")) return;
+        await deleteRecord("books", id);
+        showMsg("Livro excluído");
+        loadBooks();
+        return;
+      }
+      Swal.fire({
+        title: "Tem certeza?",
+        text: "Excluir livro? Essa ação não poderá ser desfeita.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sim, excluir!"
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await deleteRecord("books", id);
+          showMsg("Livro excluído");
+          loadBooks();
+        }
+      });
     });
   });
 }
 
+// Submit do formulário de livro
 bookForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -232,23 +330,28 @@ bookForm.addEventListener("submit", async (e) => {
   const yearStr = (document.getElementById("bookYear").value || "").toString().trim();
   const authorId = document.getElementById("bookAuthor").value || null;
 
-  // Validações
   if (!title) {
-    showMsg("Título é obrigatório");
+    showMsg("Título é obrigatório.");
     document.getElementById("bookTitle").focus();
     return;
   }
 
+  // Validação de ano: apenas números, não-negativo e <= ano atual
+  const currentYear = new Date().getFullYear();
   if (yearStr !== "") {
-    // apenas dígitos, sem sinal
     if (!/^\d+$/.test(yearStr)) {
       showMsg("Ano inválido. Use apenas números inteiros não-negativos.");
       document.getElementById("bookYear").focus();
       return;
     }
     const yearNum = Number(yearStr);
-    if (!Number.isFinite(yearNum) || yearNum <= 1) {
-      showMsg("Ano inválido. Deve ser > 1.");
+    if (!Number.isFinite(yearNum) || yearNum < 0) {
+      showMsg("Ano inválido. Deve ser maior ou igual a 0.");
+      document.getElementById("bookYear").focus();
+      return;
+    }
+    if (yearNum > currentYear) {
+      showMsg("Ano não pode ser maior que o atual.");
       document.getElementById("bookYear").focus();
       return;
     }
@@ -277,18 +380,16 @@ bookForm.addEventListener("submit", async (e) => {
     console.error(err);
     showMsg("Erro ao salvar livro");
   }
-  // --- sanitize numeric input for published year (remove non-digits as user types)
-  const bookYearInput = document.getElementById("bookYear");
-  if (bookYearInput) {
-    bookYearInput.addEventListener("input", () => {
-      // remove tudo que não for dígito (impede sinais, letras, acentos)
-      bookYearInput.value = bookYearInput.value.replace(/[^\d]/g, "");
-    });
-  }
 });
 
 // Inicialização
 document.addEventListener("DOMContentLoaded", () => {
   loadAuthors();
   loadBooks();
+
+  // (Opcional) definir max no input de nascimento via JS para evitar data futura no HTML
+  const birthInput = document.getElementById("authorBirthdate");
+  if (birthInput) {
+    birthInput.max = new Date().toISOString().split("T")[0];
+  }
 });
